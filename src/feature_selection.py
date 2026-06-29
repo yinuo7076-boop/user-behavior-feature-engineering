@@ -1,11 +1,12 @@
 import pandas as pd
 import numpy as np
-import lightgbm as lgb
+from sklearn.inspection import permutation_importance
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import log_loss  
 from itertools import combinations
+from lightgbm import LGBMClassifier, early_stopping, log_evaluation
 # 读取数据
 train_df = pd.read_csv('train.csv')
 val_df = pd.read_csv('val.csv')
@@ -85,8 +86,7 @@ def remove_high_correlation(X, threshold=0.8, business_priority=None):
 X_train_step2 = remove_high_correlation(X_train_step1, threshold=0.8)
 X_val_step2 = X_val_step1[X_train_step2.columns]
 
-# Step 3：排序
-# 处理类别特征
+# Step 3：排序 & 编码
 cat_features = X_train_step2.select_dtypes(exclude=[np.number]).columns.tolist()
 if cat_features:
     for col in cat_features:
@@ -94,39 +94,34 @@ if cat_features:
         X_train_step2[col] = le.fit_transform(X_train_step2[col].astype(str))
         X_val_step2[col] = le.transform(X_val_step2[col].astype(str))
 
+# 训练初始模型（全特征）
+clf_initial = LGBMClassifier(
+    objective='binary',
+    metric='binary_logloss',
+    num_leaves=31,
+    learning_rate=0.1,
+    min_data_in_leaf=20,
+    n_estimators=100,
+    random_state=42,
+    verbosity=-1
+)
 
-# 训练 LightGBM 基线模型
-lgb_train = lgb.Dataset(X_train_step2, y_train)
-lgb_val = lgb.Dataset(X_val_step2, y_val, reference=lgb_train)
-
-params = {
-    'objective': 'binary',  # 或 'multiclass' / 'regression'
-    'metric': 'binary_logloss',
-    'verbosity': -1,
-    'seed': 42,
-    'num_leaves': 31,
-    'learning_rate': 0.1,
-    'min_data_in_leaf': 20
-}
-
-model = lgb.train(
-    params,
-    lgb_train,
-    valid_sets=[lgb_val],
-    num_boost_round=100,
+clf_initial.fit(
+    X_train_step2, y_train,
+    eval_set=[(X_val_step2, y_val)],
+    eval_metric='binary_logloss',
     callbacks=[
-        lgb.early_stopping(stopping_rounds=10),
-        lgb.log_evaluation(False)
+        early_stopping(stopping_rounds=10, verbose=False),
+        log_evaluation(False)
     ]
 )
 
-# 获取信息增益（split/gain）
+# 基于重要性筛选特征
 importance_df = pd.DataFrame({
     'feature': X_train_step2.columns,
-    'importance': model.feature_importance(importance_type='gain')
-}).sort_values('importance', ascending=False)
+    'importance': clf_initial.feature_importances_
+}).sort_values('importance', ascending=False).reset_index(drop=True)
 
-# 累计贡献 95%
 importance_df['cumulative_importance'] = importance_df['importance'].cumsum() / importance_df['importance'].sum()
 selected_features = importance_df[importance_df['cumulative_importance'] <= 0.95]['feature'].tolist()
 if len(selected_features) == 0 and len(importance_df) > 0:
@@ -135,13 +130,46 @@ if len(selected_features) == 0 and len(importance_df) > 0:
 X_train_final = X_train_step2[selected_features]
 X_val_final = X_val_step2[selected_features]
 
-# 输出最终特征列表 & 保存
+# 训练最终模型并评估
+clf_final = LGBMClassifier(
+    objective='binary',
+    metric='binary_logloss',
+    num_leaves=31,
+    learning_rate=0.1,
+    min_data_in_leaf=20,
+    n_estimators=100,
+    random_state=42,
+    verbosity=-1
+)
+
+clf_final.fit(
+    X_train_final, y_train,
+    eval_set=[(X_val_final, y_val)],
+    eval_metric='binary_logloss',
+    callbacks=[
+        early_stopping(stopping_rounds=10, verbose=False),
+        log_evaluation(False)
+    ]
+)
+
+# 排列重要性
+perm_imp = permutation_importance(
+    clf_final, X_val_final, y_val,
+    n_repeats=5,
+    random_state=42,
+    scoring='neg_log_loss'
+)
+perm_df = pd.DataFrame({
+    'feature': selected_features,
+    'perm_importance_mean': perm_imp.importances_mean
+}).sort_values('perm_importance_mean', ascending=False)
+
+# 输出 & 保存
 print(f"原始特征数: {X_train.shape[1]}")
 print(f"步骤1后: {X_train_step1.shape[1]}")
 print(f"步骤2后: {X_train_step2.shape[1]}")
 print(f"最终保留: {len(selected_features)}")
 
-# 保存筛选后的训练/验证集（用于重训模型）
 X_train_final.to_csv('X_train_selected.csv', index=False)
 X_val_final.to_csv('X_val_selected.csv', index=False)
 pd.Series(selected_features).to_csv('selected_features.txt', index=False, header=False)
