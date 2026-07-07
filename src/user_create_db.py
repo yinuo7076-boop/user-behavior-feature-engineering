@@ -75,9 +75,9 @@ features['total_behavior'] = (df_feature.groupby('user_id').size())
 features['total_views'] = (df_feature[df_feature['behavior_type'] == 1].groupby('user_id').size())
 # 345. 时间窗口 PV
 pv_all = features['total_views']
-pv_1d = df_feature[(df_feature['behavior_type'] == 1) & (df['time'] >= one_day_ago)].groupby('user_id').size()
-pv_3d = df_feature[(df_feature['behavior_type'] == 1) & (df['time'] >= three_days_ago)].groupby('user_id').size()
-pv_7d = df_feature[(df_feature['behavior_type'] == 1) & (df['time'] >= seven_days_ago)].groupby('user_id').size()
+pv_1d = df_feature[(df_feature['behavior_type'] == 1) & (df_feature['time'] >= one_day_ago)].groupby('user_id').size()
+pv_3d = df_feature[(df_feature['behavior_type'] == 1) & (df_feature['time'] >= three_days_ago)].groupby('user_id').size()
+pv_7d = df_feature[(df_feature['behavior_type'] == 1) & (df_feature['time'] >= seven_days_ago)].groupby('user_id').size()
 features['last_1day_pv'] = pv_1d
 features['last_3day_pv'] = pv_3d
 features['last_7day_pv'] = pv_7d
@@ -509,7 +509,6 @@ else:
     # Check the original data for users
         cursor.execute('''
             SELECT COUNT(*)
-            FROM user_behavior
             WHERE user_id = ?
             AND behavior_type = '3';
          ''', (user_id,))

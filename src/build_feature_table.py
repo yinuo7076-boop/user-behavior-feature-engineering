@@ -23,22 +23,27 @@ category_feature = pd.read_sql(
     conn_category
 )
 
-cursor = conn_user.cursor()
-
-cursor.execute("""
-PRAGMA table_info(user_behavior)
-""")
-
-# 建立base table
-base_table = pd.read_sql("""
-SELECT DISTINCT
+# 所有历史行为（12月18日前）
+history = pd.read_sql("""
+SELECT
     user_id,
     item_id,
     item_category,
     behavior_type,
     time
 FROM user_behavior
+WHERE time < '2014-12-18'
 """, conn_user)
+
+history['time'] = pd.to_datetime(history['time'])
+# 只保留浏览、收藏、加购行为作为候选样本
+candidate = history[
+    history['behavior_type'].isin([1, 2, 3])
+]
+base_table = candidate[
+    ['user_id', 'item_id', 'item_category']
+].drop_duplicates()
+
 # 统一格式
 user_feature['user_id'] = user_feature['user_id'].astype(str)
 item_feature['item_id'] = item_feature['item_id'].astype(str)
@@ -52,14 +57,60 @@ base_table['item_category'] = (
     base_table['item_category']
     .astype(str)
 )
-# 标签
-base_table['label'] = (
-    base_table['behavior_type'] == 4
-).astype(int)
-# 时间
-base_table['time'] = pd.to_datetime(
-    base_table['time']
+
+# 预测日（12月18日）的购买记录
+label_df = pd.read_sql("""
+SELECT DISTINCT
+    user_id,
+    item_id
+FROM user_behavior
+WHERE behavior_type = 4
+AND time >= '2014-12-18'
+AND time < '2014-12-19'
+""", conn_user)
+
+# 类型保持一致
+label_df['user_id'] = label_df['user_id'].astype(str)
+label_df['item_id'] = label_df['item_id'].astype(str)
+
+# 给购买样本打标签
+label_df['label'] = 1
+
+# 合并标签
+base_table = base_table.merge(
+    label_df,
+    on=['user_id', 'item_id'],
+    how='left'
 )
+
+# 未购买填0
+base_table['label'] = (
+    base_table['label']
+    .fillna(0)
+    .astype(int)
+)
+
+# 正样本
+positive = base_table[base_table['label'] == 1]
+# 负样本
+negative = base_table[base_table['label'] == 0]
+# 随机抽取10倍负样本
+negative = negative.sample(
+    n=len(positive) * 10,
+    random_state=42
+)
+# 合并
+base_table = pd.concat(
+    [positive, negative],
+    ignore_index=True
+)
+# 打乱
+base_table = base_table.sample(
+    frac=1,
+    random_state=42
+).reset_index(drop=True)
+print("Sampled label distribution:")
+print(base_table['label'].value_counts())
 
 # 连接user特征
 feature_table = base_table.merge(
@@ -81,11 +132,19 @@ feature_table = feature_table.merge(
 )
 # 缺失值处理
 feature_table = feature_table.fillna(0)
+
 # 保存主特征表
+project_root = os.path.dirname(script_dir)
+processed_dir = os.path.join(project_root, 'data', 'processed')
+
+os.makedirs(processed_dir, exist_ok=True)
+
 feature_table.to_csv(
-    'feature_table.csv',
+    os.path.join(processed_dir, 'feature_table.csv'),
     index=False
 )
+print("Feature table shape:", feature_table.shape)
+
 conn_user.close()
 conn_item.close()
 conn_category.close()
