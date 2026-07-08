@@ -2,17 +2,22 @@
 
 ## 1. 项目简介
 
-本项目基于用户行为数据，完成用户购买行为预测任务。
+本项目基于用户历史行为数据，构建用户、商品和类别特征，并预测用户是否会在预测日（2014-12-18）产生购买行为。
 
-项目主要包括：
+### 项目主要包括：
 
-- 数据清洗；
+- 数据清洗
 - 用户/商品/类目特征工程搭建
 - 数据集划分
 - 特征筛选
 - 模型训练与评估
 
-项目目标是通过用户历史行为数据，构建行为特征，并预测用户是否会产生购买行为
+### 项目亮点：
+
+- 构建User、Item、Category三类特征，共58个特征
+- 采用三步特征筛选流程，最终保留24个特征
+- 使用LightGBM建立购买预测模型
+- 比较Baseline、SMOTE、Random Oversampling、Random Undersampling四种类别不平衡处理方法
 
 ## 2. 项目结构
 
@@ -34,6 +39,7 @@ user_behavior_feature_engineering_project/
 │   ├── data_split_README.md
 │   ├── feature_selection_README.md
 │   └── intermediate_tables.md
+│   └── imbalanced_learning_README.md
 │
 ├── data/
 │   ├── middle/
@@ -50,28 +56,43 @@ user_behavior_feature_engineering_project/
 
 ## 3. 数据处理流程
 
-项目整体数据处理流程如下：
+### 项目整体数据处理流程如下：
 
-user_behavior.csv  
-->  
-用户/商品/类目特征构建:  
-middle_user.db / middle_item.db / middle_category.db  
-->  
-特征表拼接  
-->  
-feature_table.csv  
-->  
-时间窗口划分  
-->  
-train / validation / test  
-->  
-特征筛选  
-->  
-模型训练与评估
+```text
+原始用户行为数据
+        │
+        ▼
+构建中间特征表
+(User / Item / Category)
+        │
+        ▼
+生成候选 User-Item 样本
+(2014-12-18 前历史行为)
+        │
+        ▼
+生成Label
+(2014-12-18 是否购买)
+        │
+        ▼
+构建 Feature Table
+        │
+        ▼
+划分 Train / Validation / Test
+        │
+        ▼
+特征筛选
+        │
+        ▼
+类别不平衡实验
+(Baseline / SMOTE / Oversampling / Undersampling)
+        │
+        ▼
+LightGBM 模型训练与评估
+```
 
 ## 4. 特征工程
 
-本项目从三个维度构建特征：
+### 本项目从三个维度构建特征：
 
 | 特征维度 | 内容 |
 |---|---|
@@ -79,7 +100,9 @@ train / validation / test
 | Item Feature | 商品热度、转化率、兴趣深度 |
 | Category Feature | 类别整体热度与购买趋势 |
 
-主要特征包括：
+共构建 **58 个特征** ，经过特征筛选后最终保留 **24 个特征** 用于模型训练。
+
+### 主要特征包括：
 
 - 浏览次数
 - 加购率
@@ -89,9 +112,10 @@ train / validation / test
 - 最近行为时间
 - 用户兴趣深度
 - 商品热度增长率
-- 浏览未购买率等
+- 浏览未购买率
+- 重复购买指数
 
-详细说明见：
+### 详细说明见：
 
 ```text
 docs/intermediate_tables.md
@@ -99,22 +123,23 @@ docs/intermediate_tables.md
 
 ## 5. 数据集划分
 
-采用时间窗口划分方式：
+### 本项目采用 **分层随机划分（Stratified Split）**，按照标签比例将数据划分为训练集、验证集和测试集。
 
-| 数据集 | 时间范围 |
-|---|---|
-| Train | 2014-11-18 ~ 2014-12-10 |
-| Validation | 2014-12-10 ~ 2014-12-15 |
-| Test | 2014-12-15 ~ 2014-12-18 |
+| 数据集 | 占比 |
+|-------|-----:|
+| Train | 70% |
+| Validation | 20% |
+| Test | 10% |
 
-划分原则：
+采用```train_test_split()``` 并设置```stratify=label```，确保各数据集保持一致的类别分布。
 
-- 避免数据泄露
-- 保持时间顺序
-- 保证label分布相近
-- 保证工作日与全时间段覆盖
+### 划分原则：
 
-详细说明见：
+- 保持训练集、验证集和测试集中的正负样本比例一致
+- 使用随机打乱后进行划分
+- 保证实验可复现
+
+### 详细说明见：
 
 ```text
 docs/data_split_README.md
@@ -122,7 +147,7 @@ docs/data_split_README.md
 
 ## 6. 特征筛选
 
-项目采用三步特征筛选流程：
+### 项目采用三步特征筛选流程：
 
 | 步骤 | 方法 |
 |---|---|
@@ -130,12 +155,12 @@ docs/data_split_README.md
 | Step2 | 消除冗余 |
 | Step3 | 排序 |
 
-筛选原则：
+### 筛选原则：
 
 - 所有筛选仅基于训练集完成，避免数据泄露
 - 删除低质量与冗余特征，保留高价值特征
 
-详细说明见：
+### 详细说明见：
 
 ```text
 docs/feature_selection_README.md
@@ -143,12 +168,12 @@ docs/feature_selection_README.md
 
 ## 7. 模型
 
-本项目采用树模型 LightGBM 作为主模型，用于：
+### 本项目采用 **树模型 LightGBM** 作为主模型，用于：
 
 - 特征重要性排序
 - 用户购买行为预测
 
-由于树模型能够较好处理：
+### 由于树模型能够较好处理：
 
 - 非线性关系
 - 特征交互
@@ -156,11 +181,26 @@ docs/feature_selection_README.md
 
 因此作为本项目重点优化模型。
 
-同时使用 Logistic Regression 模型，用于简单性能对照。
+## 8. 类别不平衡实验
 
-## 8. 环境依赖
+### 本项目比较了多种类别不平衡处理方法，包括：
 
-项目主要依赖：
+- Baseline
+- SMOTE
+- Random Oversampling
+- Random Undersampling
+
+采用 **Recall、F1-score、ROC-AUC** 作为评价指标，对不同采样策略进行了对比分析。
+
+### 详细实验过程及结果见：
+
+```text
+docs/imbalanced_learning_README.md
+```
+
+## 9. 环境依赖
+
+### 项目主要依赖：
 
 ```text
 pandas==2.3.3
@@ -169,13 +209,13 @@ scikit-learn==1.7.2
 lightgbm==4.6.0
 ```
 
-详细说明见：
+### 详细说明见：
 
 ```text
 requirements.txt
 ```
 
-## 9. 运行方法
+## 10. 运行方法
 
 ### Step1：生成中间特征表
 
@@ -203,30 +243,14 @@ python src/split_dataset.py
 python src/feature_selection.py
 ```
 
-## 10. 项目说明
+## 11. 数据集
 
-本项目重点关注：
+由于Data文件较大（超过 GitHub 限制），本项目未上传 Data 文件夹。
 
-- 特征工程
-- 时间窗口划分
-- 数据泄露控制
-- 特征筛选流程
-- 用户行为建模
-
-适用于：
-
-- 推荐系统
-- 用户行为分析
-- 电商数据挖掘等场景
-
-### 11. Dataset
-
-由于数据文件较大（超过 GitHub 限制），本项目未上传 data 文件夹。
-
-数据可以通过以下链接下载：
+### 数据可以通过以下链接下载：
 
 https://pan.baidu.com/s/1WcanaXngjIcaUTAvlYjubA 提取码: uub5
 
-下载后请解压，并放在项目根目录，结构如下：
+### 下载后请解压，并放在项目根目录，结构如下：
 
 data/
