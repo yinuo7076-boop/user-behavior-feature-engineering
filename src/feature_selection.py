@@ -17,15 +17,6 @@ from sklearn.preprocessing import LabelEncoder
 from lightgbm import LGBMClassifier, early_stopping, log_evaluation
 from imblearn.over_sampling import SMOTE
 
-train = pd.read_csv("/Users/yinuowang/Desktop/Python_workspace/code/user_behavior_feature_engineering_project/data/processed/train.csv")
-
-label_count = train["label"].value_counts()
-
-print(label_count)
-print(f"Positive samples: {label_count[1]}")
-print(f"Negative samples: {label_count[0]}")
-print(f"Positive ratio: {label_count[1] / len(train):.2%}")
-
 # 数据路径
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, 'data')

@@ -14,10 +14,10 @@
 
 ### 项目亮点：
 
-- 构建User、Item、Category三类特征，共58个特征
-- 采用三步特征筛选流程，最终保留24个特征
-- 使用LightGBM建立购买预测模型
-- 比较Baseline、SMOTE、Random Oversampling、Random Undersampling四种类别不平衡处理方法
+- 构建 User、Item、Category 三类特征，共58个特征
+- 采用三步特征筛选方法，最终保留24个特征
+- 使用 LightGBM 建立用户购买行为预测模型
+- 比较 Baseline、SMOTE、Random Oversampling、Random Undersampling 四种类别不平衡处理方法
 
 ## 2. 项目结构
 
@@ -38,8 +38,23 @@ user_behavior_feature_engineering_project/
 ├── docs/
 │   ├── data_split_README.md
 │   ├── feature_selection_README.md
-│   └── intermediate_tables.md
+│   ├── intermediate_tables_README.md
 │   └── imbalanced_learning_README.md
+│
+├── experiments/
+│   ├── baseline/
+│   ├── smote_0.3/
+│   ├── smote_0.5/
+│   ├── smote_0.8/
+│   ├── smote_1.0/
+│   ├── oversampling_0.3/
+│   ├── oversampling_0.5/
+│   ├── oversampling_0.8/
+│   ├── oversampling_1.0/
+│   ├── undersampling_0.3/
+│   ├── undersampling_0.5/
+│   ├── undersampling_0.8/
+│   └── undersampling_1.0/
 │
 ├── data/
 │   ├── middle/
@@ -52,6 +67,20 @@ user_behavior_feature_engineering_project/
 │       ├── train.csv
 │       ├── val.csv
 │       └── test.csv
+```
+不同实验目录中保存对应采样策略的实验结果，包括：
+
+```text
+metrics.csv                  # 模型评估指标
+model.pkl                    # 训练好的 LightGBM 模型
+roc_curve.png                # ROC 曲线
+confusion_matrix.png         # 混淆矩阵
+X_train_smote.csv            # SMOTE 生成的训练特征（SMOTE 实验）
+y_train_smote.csv
+X_train_oversampled.csv      # 过采样后的训练数据（Oversampling 实验）
+y_train_oversampled.csv
+X_train_undersampled.csv     # 欠采样后的训练数据（Undersampling 实验）
+y_train_undersampled.csv
 ```
 
 ## 3. 数据处理流程
@@ -118,7 +147,7 @@ LightGBM 模型训练与评估
 ### 详细说明见：
 
 ```text
-docs/intermediate_tables.md
+docs/intermediate_tables_README.md
 ```
 
 ## 5. 数据集划分
@@ -131,7 +160,7 @@ docs/intermediate_tables.md
 | Validation | 20% |
 | Test | 10% |
 
-采用```train_test_split()``` 并设置```stratify=label```，确保各数据集保持一致的类别分布。
+采用`train_test_split()` 并设置`stratify=label`，确保各数据集保持一致的类别分布。
 
 ### 划分原则：
 
@@ -159,6 +188,8 @@ docs/data_split_README.md
 
 - 所有筛选仅基于训练集完成，避免数据泄露
 - 删除低质量与冗余特征，保留高价值特征
+
+完成特征筛选后，项目进一步基于筛选后的特征开展类别不平衡实验，用于比较不同采样策略对模型性能的影响。
 
 ### 详细说明见：
 
@@ -237,20 +268,65 @@ python src/build_feature_table.py
 python src/split_dataset.py
 ```
 
-### Step4：特征筛选
+### Step4：特征筛选与类别不平衡实验
 
 ```bash
 python src/feature_selection.py
 ```
 
+该脚本完成以下工作：
+
+- 特征筛选
+- 生成筛选后的训练集和验证集
+- 基于筛选后的特征开展类别不平衡实验（Baseline、SMOTE、Random Oversampling、Random Undersampling）
+- 保存不同采样策略对应的模型、评估指标及可视化结果至 `experiments/` 目录
+
 ## 11. 数据集
 
-由于Data文件较大（超过 GitHub 限制），本项目未上传 Data 文件夹。
+由于数据文件较大（超过 GitHub 文件大小限制），本项目未上传数据文件。
 
-### 数据可以通过以下链接下载：
+### 11.1 原始数据（Raw Data）
 
-https://pan.baidu.com/s/1WcanaXngjIcaUTAvlYjubA 提取码: uub5
+项目运行依赖原始数据文件：
 
-### 下载后请解压，并放在项目根目录，结构如下：
+```text
+raw_data/
+└── data_min.csv
+```
 
+该文件未包含在本项目中，请下载后放置到本地任意目录，并根据实际存放位置修改代码中的数据读取路径（本项目开发环境中使用 raw_data/data_min.csv 作为原始数据路径）。
+
+### 11.2 项目数据（Project Data）
+
+项目运行过程中生成的中间数据及处理结果位于：
+
+```text
 data/
+├── middle/
+│   ├── middle_user.db
+│   ├── middle_item.db
+│   ├── middle_category.db
+│
+└── processed/
+    ├── feature_table.csv
+    ├── train.csv
+    ├── val.csv
+    ├── test.csv
+    ├── X_train_selected.csv
+    └── X_val_selected.csv
+```
+
+由于上述数据文件体积较大，因此未上传至 GitHub。
+
+可通过以下链接下载：
+
+> **UserBehaviorDataset**  
+> 链接：https://pan.baidu.com/s/1QQXo60MTZ1H7Usfo6YIZqA  
+> 提取码：6aeg
+
+下载内容包括：
+
+- raw_data/data_min.csv（原始数据）
+- data/（项目运行过程中生成的数据）
+
+下载完成后，请保持上述目录结构不变，并放置到项目对应位置后再运行代码。
