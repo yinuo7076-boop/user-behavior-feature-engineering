@@ -281,11 +281,21 @@ python src/feature_selection.py
 - 基于筛选后的特征开展类别不平衡实验（Baseline、SMOTE、Random Oversampling、Random Undersampling）
 - 保存不同采样策略对应的模型、评估指标及可视化结果至 `experiments/` 目录
 
-## 11. 数据集
+## 11. 模型训练结果
+
+Baseline 模型训练过程中记录了训练集与验证集的 Binary Log Loss，并绘制学习曲线，用于分析模型的收敛情况及是否存在过拟合。
+
+学习曲线保存在：
+
+```text
+experiments/baseline/learning_curve.png
+```
+
+## 12. 数据集
 
 由于数据文件较大（超过 GitHub 文件大小限制），本项目未上传数据文件。
 
-### 11.1 原始数据（Raw Data）
+### 12.1 原始数据（Raw Data）
 
 项目运行依赖原始数据文件：
 
@@ -296,7 +306,7 @@ raw_data/
 
 该文件未包含在本项目中，请下载后放置到本地任意目录，并根据实际存放位置修改代码中的数据读取路径（本项目开发环境中使用 raw_data/data_min.csv 作为原始数据路径）。
 
-### 11.2 项目数据（Project Data）
+### 12.2 项目数据（Project Data）
 
 项目运行过程中生成的中间数据及处理结果位于：
 

@@ -14,7 +14,7 @@ from sklearn.metrics import (
 from sklearn.inspection import permutation_importance
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import LabelEncoder 
-from lightgbm import LGBMClassifier, early_stopping, log_evaluation
+from lightgbm import LGBMClassifier, early_stopping, log_evaluation, record_evaluation
 from imblearn.over_sampling import SMOTE
 
 # 数据路径
@@ -228,6 +228,9 @@ EXPERIMENT_DIR = os.path.join(
     experiment_name
 )
 os.makedirs(EXPERIMENT_DIR, exist_ok=True)
+# 用于记录训练过程
+evals_result = {}
+
 clf_baseline = LGBMClassifier(
     objective='binary',
     metric='binary_logloss',
@@ -242,13 +245,45 @@ clf_baseline = LGBMClassifier(
 clf_baseline.fit(
     X_train_final,
     y_train,
-    eval_set=[(X_val_final, y_val)],
+    eval_set=[(X_train_final, y_train), (X_val_final, y_val)],
     eval_metric='binary_logloss',
     callbacks=[
         early_stopping(stopping_rounds=10, verbose=False),
+        record_evaluation(evals_result),
         log_evaluation(False)
     ]
 )
+
+# 画学习曲线
+plt.figure(figsize=(8,5))
+
+plt.plot(
+    evals_result['training']['binary_logloss'],
+    label='Training Loss',
+    linewidth=2
+)
+
+plt.plot(
+    evals_result['valid_1']['binary_logloss'],
+    label='Validation Loss',
+    linewidth=2
+)
+
+plt.xlabel("Boosting Iterations")
+plt.ylabel("Binary Log Loss")
+plt.title("Learning Curve of Baseline LightGBM")
+plt.legend()
+
+plt.grid(alpha=0.3)
+
+plt.tight_layout()
+
+plt.savefig(
+    "experiments/baseline/learning_curve.png",
+    dpi=300
+)
+
+plt.show()
 
 # Predict
 y_pred = clf_baseline.predict(X_val_final)
