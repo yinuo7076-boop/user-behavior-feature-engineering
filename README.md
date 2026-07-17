@@ -283,12 +283,38 @@ python src/feature_selection.py
 
 ## 11. 模型训练结果
 
-Baseline 模型训练过程中记录了训练集与验证集的 Binary Log Loss，并绘制学习曲线，用于分析模型的收敛情况及是否存在过拟合。
+完成特征筛选后，本项目采用 LightGBM 对筛选后的 24 个特征进行训练，并记录模型训练过程中训练集和验证集的 Binary Log Loss，用于分析模型收敛情况及泛化能力。
 
-学习曲线保存在：
+模型训练过程中绘制了学习曲线，结果保存在：
 
 ```text
 experiments/baseline/learning_curve.png
+```
+
+从学习曲线可以观察到：
+
+- 训练集 Binary Log Loss 随 Boosting Iterations 持续下降，说明模型能够不断学习训练数据中的特征
+- 验证集 Binary Log Loss 在训练初期快速下降，随后逐渐趋于稳定
+- 后期训练集与验证集损失之间存在一定差距，但验证集损失未出现明显上升，说明模型仅存在轻微过拟合，整体具有较好的泛化能力
+- 本项目采用 Early Stopping 机制，在验证集性能不再提升时提前停止训练，从而避免模型进一步过拟合
+
+训练完成后，模型保存为：
+
+```text
+experiments/baseline/model.pkl
+```
+
+模型文件大小约为 **294 KB**，便于后续加载、部署及预测使用。
+训练完成后，各实验均自动保存模型评估指标、ROC Curve、Confusion Matrix 及训练好的模型文件，便于不同类别平衡策略之间的性能比较与实验复现。
+
+在模型评估阶段，本项目进一步比较了 Baseline、SMOTE、Random Oversampling 和 Random Undersampling 四种类别不平衡处理策略，并保存了各实验对应的模型、评估指标及可视化结果（ROC Curve、Confusion Matrix 等）。
+
+总体来看，LightGBM 能够较好地学习用户行为特征，不同采样策略对模型的 Recall、F1-score 和 ROC-AUC 均产生了一定影响。其中，Random Oversampling 在模型综合性能方面表现较优，而 Random Undersampling 能够进一步提高 Recall，但会带来更多误分类，需要结合具体应用场景进行权衡。
+
+关于类别不平衡实验的实验设计、评价指标、模型性能对比及结果分析，请参考：
+
+```text
+docs/imbalanced_learning_README.md
 ```
 
 ## 12. 数据集
