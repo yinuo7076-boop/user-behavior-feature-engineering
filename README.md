@@ -197,24 +197,67 @@ docs/data_split_README.md
 docs/feature_selection_README.md
 ```
 
-## 7. 模型
+## 7. 模型比较
 
-### 本项目采用 **树模型 LightGBM** 作为主模型，用于：
+为了验证不同机器学习模型在用户购买行为预测任务中的表现，本项目在相同的数据集划分、特征筛选流程及训练条件下，对三种分类模型进行了横向比较。
 
-- 特征重要性排序
-- 用户购买行为预测
+比较模型包括：
 
-### 由于树模型能够较好处理：
+- Logistic Regression
+- XGBoost
+- LightGBM
 
-- 非线性关系
-- 特征交互
-- 大规模稀疏特征
+### 实验设置
 
-因此作为本项目重点优化模型。
+为了保证实验结果具有可比性，三种模型均采用：
+
+- 相同的数据集划分（Train/Validation/Test）
+- 相同的特征筛选流程
+- 相同的训练集与验证集
+- 相同的评价指标
+
+评价指标包括：
+
+- Precision
+- Recall
+- F1-score
+- ROC-AUC
+
+### 模型比较结果
+
+| Model | Precision | Recall | F1-score | ROC-AUC |
+|------|---------:|------:|------:|------:|
+| Logistic Regression | 0.5294 | 0.0882 | 0.1513 | 0.8223 |
+| XGBoost | 0.6875 | 0.4853 | 0.5690 | 0.9174 |
+| **LightGBM** | **0.7463** | **0.4902** | **0.5917** | **0.9286** |
+
+实验结果表明，LightGBM 在 Precision、F1-score 及 ROC-AUC 指标上均取得最佳表现，同时保持了较高的 Recall，整体分类性能优于 Logistic Regression 和 XGBoost。因此，本项目最终选择 **LightGBM** 作为后续类别不平衡实验的基础分类模型。
+
+### 实验输出
+
+模型比较结果保存在：
+
+```text
+experiments/
+└── model_comparison/
+    ├── logistic_regression.pkl
+    ├── xgboost.pkl
+    ├── lightgbm.pkl
+    ├── model_comparison_metrics.csv
+    └── roc_curve_comparison.png
+```
+
+其中：
+
+- `*.pkl`：训练完成后的模型文件
+- `model_comparison_metrics.csv`：三个模型的评估指标
+- `roc_curve_comparison.png`：三个模型 ROC 曲线对比图
 
 ## 8. 类别不平衡实验
 
-### 本项目比较了多种类别不平衡处理方法，包括：
+在完成模型比较后，本项目选择综合性能最优的 **LightGBM** 作为基础分类模型，并进一步比较不同类别平衡策略对模型性能的影响。
+
+方法包括：
 
 - Baseline
 - SMOTE
