@@ -46,6 +46,11 @@ drop_cols = [
     'hesitation_buying_rate'
     ]  
 X_train = train_df.drop(columns=drop_cols, errors='ignore')
+print("原始特征数：", X_train.shape[1])
+print("train_df列数：", train_df.shape[1])
+print("X_train列数：", X_train.shape[1])
+print("train_df所有列：")
+print(train_df.columns.tolist())
 y_train = train_df['label']
 X_val = val_df.drop(columns=drop_cols, errors='ignore')
 y_val = val_df['label']

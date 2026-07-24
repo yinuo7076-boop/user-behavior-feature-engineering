@@ -14,8 +14,9 @@
 
 ### 项目亮点：
 
-- 构建 User、Item、Category 三类特征，共58个特征
+- 构建 User、Item、Category 三类特征
 - 采用三步特征筛选方法，最终保留24个特征
+- 比较 Logistic Regression、XGBoost 与 LightGBM 三种模型性能
 - 使用 LightGBM 建立用户购买行为预测模型
 - 比较 Baseline、SMOTE、Random Oversampling、Random Undersampling 四种类别不平衡处理方法
 
@@ -31,6 +32,7 @@ user_behavior_feature_engineering_project/
 │   ├── user_create_db.py
 │   ├── item_create_db.py
 │   ├── category_create_db.py
+│   ├── model_comparison.py
 │   ├── build_feature_table.py
 │   ├── split_dataset.py
 │   └── feature_selection.py
@@ -43,6 +45,7 @@ user_behavior_feature_engineering_project/
 │
 ├── experiments/
 │   ├── baseline/
+│   ├── model_comparison/
 │   ├── smote_0.3/
 │   ├── smote_0.5/
 │   ├── smote_0.8/
@@ -71,6 +74,11 @@ user_behavior_feature_engineering_project/
 不同实验目录中保存对应采样策略的实验结果，包括：
 
 ```text
+model_comparison_metrics.csv # 三种模型性能对比结果
+roc_curve_comparison.png     # 三种模型 ROC 曲线对比
+logistic_regression.pkl      # Logistic Regression 模型
+xgboost.pkl                  # XGBoost 模型
+lightgbm.pkl                 # LightGBM 模型
 metrics.csv                  # 模型评估指标
 model.pkl                    # 训练好的 LightGBM 模型
 roc_curve.png                # ROC 曲线
@@ -112,11 +120,19 @@ y_train_undersampled.csv
 特征筛选
         │
         ▼
+模型比较
+(Logistic Regression / XGBoost / LightGBM)
+        │
+        ▼
+确认最终模型
+(LightGBM)
+        │
+        ▼
 类别不平衡实验
 (Baseline / SMOTE / Oversampling / Undersampling)
         │
         ▼
-LightGBM 模型训练与评估
+模型评估与分析
 ```
 
 ## 4. 特征工程
@@ -129,7 +145,7 @@ LightGBM 模型训练与评估
 | Item Feature | 商品热度、转化率、兴趣深度 |
 | Category Feature | 类别整体热度与购买趋势 |
 
-共构建 **58 个特征** ，经过特征筛选后最终保留 **24 个特征** 用于模型训练。
+特征表共包含用户、商品、类别等基础信息及模型输入特征。其中，模型训练阶段使用 **44 个输入特征**，经过三步特征筛选后，最终保留 **24 个特征** 用于模型训练。
 
 ### 主要特征包括：
 
@@ -319,12 +335,39 @@ python src/feature_selection.py
 
 该脚本完成以下工作：
 
-- 特征筛选
-- 生成筛选后的训练集和验证集
-- 基于筛选后的特征开展类别不平衡实验（Baseline、SMOTE、Random Oversampling、Random Undersampling）
-- 保存不同采样策略对应的模型、评估指标及可视化结果至 `experiments/` 目录
+- 去除低质量特征（缺失率、低方差过滤）
+- 消除高相关冗余特征
+- 基于 LightGBM 特征重要性进行排序
+- 输出筛选后的训练集和验证集
 
-## 11. 模型训练结果
+### Step5：模型比较
+
+```bash
+python src/model_comparison.py
+```
+
+该脚本完成以下工作：
+
+- 使用 Logistic Regression、XGBoost 和 LightGBM 三种模型进行训练
+- 比较 Precision、Recall、F1-score 和 ROC-AUC 等评价指标
+- 自动保存模型比较结果、ROC 曲线及训练好的模型文件
+
+### Step6：类别不平衡实验
+
+```bash
+python src/feature_selection.py
+```
+
+该脚本进一步完成以下工作：
+
+- Baseline
+- SMOTE
+- Random Oversampling
+- Random Undersampling
+
+四种类别平衡策略实验，并保存不同采样策略对应的模型、评估指标及可视化结果至 `experiments/` 目录。
+
+## 11. 模型训练与评估
 
 完成特征筛选后，本项目采用 LightGBM 对筛选后的 24 个特征进行训练，并记录模型训练过程中训练集和验证集的 Binary Log Loss，用于分析模型收敛情况及泛化能力。
 
